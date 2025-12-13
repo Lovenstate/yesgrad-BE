@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: yesgrad-service
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/yesGradLocal
+    username: postgres
+    password: admin
+    pool:
+      enabled: true
+      initial-size: 1
+      max-size: 10
+  datasource:
+    url: jdbc:postgresql://localhost:5432/yesGradLocal
+    username: postgres
+    password: admin
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    out-of-order: true
+    locations: classpath:db/migration
+  sql:
+    init:
+      mode: never
+  security:
+    jwt:
+      secret: ${JWT_SECRET:mySecretKey123456789012345678901234567890}
+      expiration: 86400000 # 24 hours
+      refresh-expiration: 604800000 # 7 days
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+file:
+  upload:
+    dir: uploads/profiles
+
+logging:
+  level:
+    com.yesgrad: DEBUG
+    org.springframework.security: TRACE
+    org.springframework.web: DEBUG
+    io.netty: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
