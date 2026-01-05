@@ -1,8 +1,6 @@
 package com.yesgrad.service.controller;
 
-import com.yesgrad.service.domain.CommonResponse;
-import com.yesgrad.service.domain.LoginResponse;
-import com.yesgrad.service.domain.User;
+import com.yesgrad.service.domain.*;
 import com.yesgrad.service.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -96,6 +94,31 @@ public class AuthController {
             }));
     }
 
+    @PostMapping("/forgot-password")
+    public Mono<ResponseEntity<CommonResponse<String>>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        log.info("Forgot password request for email: {}", request.email());
+
+        return authService.forgotPassword(request.email())
+                .map(message -> ResponseEntity.ok(CommonResponse.success(message)))
+                .doOnError(error -> log.error("Forgot password failed", error));
+    }
+
+    @PostMapping("/reset-password")
+    public Mono<ResponseEntity<CommonResponse<String>>> restPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+
+        return authService.resetPassword(request.token(), request.newPassword())
+                .map(message -> ResponseEntity.ok(CommonResponse.success(message)))
+                .doOnError(error -> log.error("Reset password failed", error));
+    }
+
+    @GetMapping("/verify-reset-token/{token}")
+    public Mono<ResponseEntity<CommonResponse<Boolean>>> verifyResetToken(@PathVariable String token) {
+        return authService.verifyResetToken(token)
+                .map(valid -> ResponseEntity.ok(CommonResponse.success("Token verified", valid)));
+    }
+
     private void setAuthCookie(ServerHttpResponse response, String token) {
         ResponseCookie cookie = ResponseCookie.from(AUTH_COOKIE_NAME, token)
             .httpOnly(true)
@@ -134,5 +157,14 @@ public class AuthController {
     public record LoginRequest(
         @NotBlank @Email String email,
         @NotBlank String password
+    ) {}
+
+    public record ForgotPasswordRequest(
+        @NotBlank @Email String email
+    ) {}
+
+    public record ResetPasswordRequest(
+        @NotBlank String token,
+        @NotBlank @Size(min = 6) String newPassword
     ) {}
 }

@@ -25,6 +25,16 @@ public class CommonResponse<T> {
         return new CommonResponse<>(true, message, data, LocalDateTime.now(), null);
     }
 
+    public static <T> CommonResponse<T> error(String message) {
+        CommonError error = new CommonError("ERROR", message, null);
+        return new CommonResponse<>(false, message, null, LocalDateTime.now(), error);
+    }
+
+    public static <T> CommonResponse<T> error(String message, T data) {
+        CommonError error = new CommonError("VALIDATION_ERROR", message, null);
+        return new CommonResponse<>(false, message, data, LocalDateTime.now(), error);
+    }
+
     public static <T> CommonResponse<T> error(String code, String message) {
         CommonError error = new CommonError(code, message, null);
         return new CommonResponse<>(false, message, null, LocalDateTime.now(), error);

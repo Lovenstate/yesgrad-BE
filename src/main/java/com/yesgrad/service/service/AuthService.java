@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final StudentProfileRepository studentProfileRepository;
+    private final EmailService emailService;
     
     public Mono<User> register(String email, String password,
                                String firstName, String lastName,
@@ -127,5 +129,43 @@ public class AuthService {
             log.error("Error extracting user from token", e);
             return Mono.empty();
         }
+    }
+
+    public Mono<String> forgotPassword(String email) {
+        return userRepository.findByEmail(email)
+                .flatMap(user -> {
+                    String token = UUID.randomUUID().toString();
+                    user.setResetToken(token);
+                    user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+
+                    return userRepository.save(user)
+                            .flatMap(savedUser ->  emailService.sendEmail(
+                                    user.getEmail(),
+                                    user.getFirstName(),
+                                    token
+                            )).thenReturn("Reset link to email");
+                }).defaultIfEmpty("Reset link to email");
+    }
+
+    public Mono<String> resetPassword(String token, String newPassword) {
+        return userRepository.findByResetToken(token)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Invalid or expired reset token")))
+                .flatMap(user -> {
+                    if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+                        return Mono.error(new IllegalArgumentException("Reset token has expired"));
+                    }
+                    user.setPasswordHash(passwordEncoder.encode(newPassword));
+                    user.setResetToken(null);
+                    user.setResetTokenExpiry(null);
+                    user.setUpdatedAt(LocalDateTime.now());
+
+                    return userRepository.save(user).thenReturn("Password updated successfully");
+                });
+    }
+
+    public Mono<Boolean> verifyResetToken(String token) {
+        return userRepository.findByResetToken(token)
+                .map(user -> user.getResetTokenExpiry().isAfter(LocalDateTime.now()))
+                .defaultIfEmpty(false);
     }
 }

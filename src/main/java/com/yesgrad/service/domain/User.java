@@ -51,6 +51,12 @@ public class User {
     
     @Column("last_login")
     private LocalDateTime lastLogin;
+
+    @Column("reset_token")
+    private String resetToken;
+
+    @Column("reset_token_expiry")
+    private LocalDateTime resetTokenExpiry;
     
     public enum UserRole {
         STUDENT, TUTOR, ADMIN

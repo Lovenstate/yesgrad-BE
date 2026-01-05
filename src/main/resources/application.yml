@@ -33,7 +33,7 @@ spring:
 
 file:
   upload:
-    dir: uploads/profiles
+    dir: ${user.dir}/uploads/profiles
 
 logging:
   level:

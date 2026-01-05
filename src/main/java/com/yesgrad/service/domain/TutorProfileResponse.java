@@ -9,6 +9,8 @@ public class TutorProfileResponse {
     private Long id;
     private Long userId;
     private String profilePhotoUrl;
+    private String bio;
+    private Boolean instantBook;
     private String school;
     private String degree;
     private String fieldOfStudy;

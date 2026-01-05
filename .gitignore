@@ -40,3 +40,17 @@ out/
 ### Documentation ###
 *.md
 *.MD
+
+### Database Migrations ###
+db.migration/
+*.sql
+
+### Images ###
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.svg
+*.ico
+*.webp
