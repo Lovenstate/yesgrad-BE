@@ -35,9 +35,29 @@ file:
   upload:
     dir: ${user.dir}/uploads/profiles
 
+yesgrad:
+  company-name: ${COMPANY_NAME:YesGrad LLC}
+  phone-number: ${PHONE_NUMBER:(800) 913-1372}
+
+app:
+  yesgrad:
+    company-name: ${COMPANY_NAME:YesGrad LLC}
+    phone-number: ${PHONE_NUMBER:(800) 913-1372}
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
+  security:
+    password-history-limit: 5
+    reset-rate-limit: 3
+    reset-rate-window-hours: 1
+  brevo:
+    api-key: ${BREVO_API_KEY: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}
+    sender:
+      email: ${BREVO_SENDER_EMAIL:lovens@lovenstate.com}
+      name: ${BREVO_SENDER_NAME:YesGrad}
+
 logging:
   level:
-    com.yesgrad: DEBUG
+    com.yesgrad: INFO
     org.springframework.security: TRACE
     org.springframework.web: DEBUG
     io.netty: WARN

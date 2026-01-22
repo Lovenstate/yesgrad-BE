@@ -13,7 +13,7 @@ public class TutorCompleteSettingsResponse {
     private Boolean instantBook;
     
     // TutorSettings fields
-    private String responseTime;
+    private int responseTime;
     private Boolean emailNotifications;
     private Boolean smsNotifications;
     private Boolean lessonReminders;

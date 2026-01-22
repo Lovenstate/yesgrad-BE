@@ -4,15 +4,14 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
-import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
-@Table("tutor_subjects")
-public class TutorSubject {
+@Table("password_reset_attempts")
+public class PasswordResetAttempt {
     @Id
     private Long id;
-    private Long tutorId;
-    private Long subjectId;
-    private Long levelId;
-    private BigDecimal hourlyRate;
+    private String email;
+    private String ipAddress;
+    private LocalDateTime attemptedAt;
 }

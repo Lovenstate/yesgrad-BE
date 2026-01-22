@@ -35,6 +35,19 @@ public class JwtService {
             .signWith(getSigningKey())
             .compact();
     }
+
+    public String generateResetToken(String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("email", email);
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(email)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey())
+                .compact();
+    }
     
     public Claims extractClaims(String token) {
         return Jwts.parser()

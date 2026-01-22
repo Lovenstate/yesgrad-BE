@@ -16,15 +16,12 @@ public class Subject {
     
     @Column("name")
     private String name;
-    
-    @Column("description")
-    private String description;
-    
-    @Column("category")
-    private String category;
-    
-    @Column("is_active")
-    private Boolean isActive;
+
+    @Column("slug")
+    private String slug;
+
+    @Column("parent_id")
+    private Long parentId;
     
     @Column("created_at")
     private LocalDateTime createdAt;

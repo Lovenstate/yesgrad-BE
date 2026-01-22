@@ -18,7 +18,7 @@ public class TutorProfile {
     private String degree;
     private String fieldOfStudy;
     private Integer graduationYear;
-    private Double hourlyRate;
+    private Double hourlyRate; // this should be like a range based on what he charges per subject
     private String cancellationPolicy;
     private String travelPolicy;
     private LocalDateTime createdAt;

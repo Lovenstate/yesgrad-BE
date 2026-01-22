@@ -38,7 +38,7 @@ public class TutorSettingsService {
                     response.setPhone(user.getPhone());
                     response.setBio(profile.getBio());
                     response.setInstantBook(profile.getInstantBook());
-                    response.setResponseTime(convertResponseTime(settings.getResponseTime()));
+                    response.setResponseTime(settings.getResponseTime());
                     response.setEmailNotifications(settings.isEmailNotifications());
                     response.setSmsNotifications(settings.isSmsNotifications());
                     response.setLessonReminders(settings.isLessonReminders());
@@ -130,7 +130,7 @@ public class TutorSettingsService {
                     boolean updated = false;
                     
                     if (request.getResponseTime() != null) {
-                        settings.setResponseTime(parseResponseTime(request.getResponseTime()));
+                        settings.setResponseTime((request.getResponseTime()));
                         updated = true;
                     }
                     
@@ -172,23 +172,5 @@ public class TutorSettingsService {
         settings.setSmsNotifications(false);
         settings.setLessonReminders(true);
         return settingsRepository.save(settings);
-    }
-
-    private Integer parseResponseTime(String responseTime) {
-        return switch (responseTime.toLowerCase()) {
-            case "1hour" -> 1;
-            case "24hours" -> 24;
-            case "48hours" -> 48;
-            default -> 24;
-        };
-    }
-
-    private String convertResponseTime(Integer hours) {
-        if (hours == null) return "24hours";
-        return switch (hours) {
-            case 1 -> "1hour";
-            case 48 -> "48hours";
-            default -> "24hours";
-        };
     }
 }

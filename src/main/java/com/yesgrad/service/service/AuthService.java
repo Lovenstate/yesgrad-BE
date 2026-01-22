@@ -1,9 +1,16 @@
 package com.yesgrad.service.service;
 
+import com.yesgrad.service.config.PropertiesConfig;
 import com.yesgrad.service.domain.LoginResponse;
+import com.yesgrad.service.domain.PasswordHistory;
+import com.yesgrad.service.domain.PasswordResetAttempt;
 import com.yesgrad.service.domain.StudentProfile;
 import com.yesgrad.service.domain.User;
+import com.yesgrad.service.enums.UserRole;
+import com.yesgrad.service.enums.UserStatus;
 import com.yesgrad.service.exceptions.AuthException;
+import com.yesgrad.service.repository.PasswordHistoryRepository;
+import com.yesgrad.service.repository.PasswordResetAttemptRepository;
 import com.yesgrad.service.repository.StudentProfileRepository;
 import com.yesgrad.service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +20,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,11 +33,14 @@ public class AuthService {
     private final JwtService jwtService;
     private final StudentProfileRepository studentProfileRepository;
     private final EmailService emailService;
+    private final PasswordHistoryRepository passwordHistoryRepository;
+    private final PasswordResetAttemptRepository resetAttemptRepository;
+    private final PropertiesConfig config;
     
     public Mono<User> register(String email, String password,
                                String firstName, String lastName,
                                String zipCode,
-                               User.UserRole role) {
+                               UserRole role) {
         log.info("Attempting to register user with email: {}", email);
         
         return userRepository.existsByEmail(email)
@@ -46,7 +57,7 @@ public class AuthService {
                 user.setLastName(lastName);
                 user.setRole(role);
                 user.setZipCode(zipCode);
-                user.setStatus(User.UserStatus.ACTIVE);
+                user.setStatus(UserStatus.ACTIVE);
                 user.setCreatedAt(LocalDateTime.now());
                 user.setUpdatedAt(LocalDateTime.now());
                 
@@ -55,7 +66,7 @@ public class AuthService {
                         log.info("User registered successfully: {} (ID: {})", email, savedUser.getId());
                         
                         // Create student profile if role is STUDENT
-                        if (savedUser.getRole() == User.UserRole.STUDENT) {
+                        if (savedUser.getRole() == UserRole.STUDENT) {
                             StudentProfile profile = new StudentProfile();
                             profile.setUserId(savedUser.getId());
                             profile.setOnboardingCompleted(false);
@@ -87,7 +98,7 @@ public class AuthService {
                     return Mono.error(new AuthException("INVALID_CREDENTIALS", "Invalid email or password"));
                 }
                 
-                if (user.getStatus() != User.UserStatus.ACTIVE) {
+                if (user.getStatus() != UserStatus.ACTIVE) {
                     log.warn("Login failed: Account not active - {} (Status: {})", email, user.getStatus());
                     return Mono.error(new AuthException("ACCOUNT_INACTIVE", "Account is not active"));
                 }
@@ -131,35 +142,100 @@ public class AuthService {
         }
     }
 
-    public Mono<String> forgotPassword(String email) {
-        return userRepository.findByEmail(email)
-                .flatMap(user -> {
-                    String token = UUID.randomUUID().toString();
-                    user.setResetToken(token);
-                    user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+    public Mono<String> forgotPassword(String email, String ipAddress) {
+        // Rate limiting check
+        LocalDateTime windowStart = LocalDateTime.now().minusHours(config.getSecurity().getResetRateWindowHours());
+        
+        return resetAttemptRepository.countRecentAttempts(email, windowStart)
+                .flatMap(count -> {
+                    if (count >= config.getSecurity().getResetRateLimit()) {
+                        log.warn("Rate limit exceeded for password reset: {}", email);
+                        return Mono.just("Reset link sent to email"); // Same response for security
+                    }
+                    
+                    // Log attempt
+                    PasswordResetAttempt attempt = new PasswordResetAttempt();
+                    attempt.setEmail(email);
+                    attempt.setIpAddress(ipAddress);
+                    attempt.setAttemptedAt(LocalDateTime.now());
+                    
+                    return resetAttemptRepository.save(attempt)
+                            .then(userRepository.findByEmail(email))
+                            .flatMap(user -> {
+                                // Generate signed token using JWT
+                                String token = jwtService.generateResetToken(user.getEmail());
+                                user.setResetToken(token);
+                                user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
 
-                    return userRepository.save(user)
-                            .flatMap(savedUser ->  emailService.sendEmail(
-                                    user.getEmail(),
-                                    user.getFirstName(),
-                                    token
-                            )).thenReturn("Reset link to email");
-                }).defaultIfEmpty("Reset link to email");
+                                return userRepository.save(user)
+                                        .flatMap(savedUser -> {
+                                            String resetLink = config.getFrontend().getUrl() + "/auth/reset-password?token=" + token;
+                                            // Async email with error handling
+                                            return emailService.sendEmail(
+                                                    "password-reset",
+                                                    user.getEmail(),
+                                                    user.getFirstName(),
+                                                    Map.of("resetLink", resetLink)
+                                            ).onErrorResume(error -> {
+                                                log.error("Failed to send password reset email to: {}", user.getEmail(), error);
+                                                return Mono.empty();
+                                            }).thenReturn("Reset link sent to email");
+                                        });
+                            })
+                            .defaultIfEmpty("Reset link sent to email");
+                });
     }
 
     public Mono<String> resetPassword(String token, String newPassword) {
         return userRepository.findByResetToken(token)
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Invalid or expired reset token")))
+                .switchIfEmpty(Mono.error(new AuthException("INVALID_TOKEN", "Invalid or expired reset token")))
                 .flatMap(user -> {
                     if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-                        return Mono.error(new IllegalArgumentException("Reset token has expired"));
+                        return Mono.error(new AuthException("TOKEN_EXPIRED", "Reset token has expired"));
                     }
-                    user.setPasswordHash(passwordEncoder.encode(newPassword));
-                    user.setResetToken(null);
-                    user.setResetTokenExpiry(null);
-                    user.setUpdatedAt(LocalDateTime.now());
+                    
+                    // Check password history
+                    return passwordHistoryRepository.findRecentByUserId(user.getId(), config.getSecurity().getPasswordHistoryLimit())
+                            .collectList()
+                            .flatMap(history -> {
+                                // Check if new password matches any recent password
+                                boolean passwordReused = history.stream()
+                                        .anyMatch(h -> passwordEncoder.matches(newPassword, h.getPasswordHash()));
+                                
+                                if (passwordReused) {
+                                    return Mono.error(new AuthException("PASSWORD_REUSED", 
+                                            "Cannot reuse any of your last " + config.getSecurity().getPasswordHistoryLimit() + " passwords"));
+                                }
+                                
+                                // Save current password to history
+                                PasswordHistory passwordHistory = new PasswordHistory();
+                                passwordHistory.setUserId(user.getId());
+                                passwordHistory.setPasswordHash(user.getPasswordHash());
+                                passwordHistory.setCreatedAt(LocalDateTime.now());
+                                
+                                return passwordHistoryRepository.save(passwordHistory)
+                                        .then(Mono.defer(() -> {
+                                            // Update password and clear reset token
+                                            user.setPasswordHash(passwordEncoder.encode(newPassword));
+                                            user.setResetToken(null);
+                                            user.setResetTokenExpiry(null);
+                                            user.setUpdatedAt(LocalDateTime.now());
 
-                    return userRepository.save(user).thenReturn("Password updated successfully");
+                                            return userRepository.save(user)
+                                                    .flatMap(savedUser -> {
+                                                        // Send confirmation email async with error handling
+                                                        emailService.sendEmail(
+                                                                "password-reset-success",
+                                                                user.getEmail(),
+                                                                user.getFirstName(),
+                                                                java.util.Map.of()
+                                                        ).doOnError(error -> log.error("Failed to send confirmation email to: {}", user.getEmail(), error))
+                                                         .subscribe();
+                                                        
+                                                        return Mono.just("Password updated successfully");
+                                                    });
+                                        }));
+                            });
                 });
     }
 

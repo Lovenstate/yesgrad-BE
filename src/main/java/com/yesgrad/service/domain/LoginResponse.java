@@ -1,4 +1,6 @@
 package com.yesgrad.service.domain;
 
-public record LoginResponse(String token, User.UserRole role) {
+import com.yesgrad.service.enums.UserRole;
+
+public record LoginResponse(String token, UserRole role) {
 }

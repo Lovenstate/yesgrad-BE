@@ -1,5 +1,7 @@
 package com.yesgrad.service.domain;
 
+import com.yesgrad.service.enums.UserRole;
+import com.yesgrad.service.enums.UserStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.data.annotation.Id;
@@ -57,12 +59,5 @@ public class User {
 
     @Column("reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
-    
-    public enum UserRole {
-        STUDENT, TUTOR, ADMIN
-    }
-    
-    public enum UserStatus {
-        ACTIVE, INACTIVE, SUSPENDED, PENDING_VERIFICATION
-    }
+
 }

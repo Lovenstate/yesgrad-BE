@@ -1,6 +1,7 @@
 package com.yesgrad.service.controller;
 
 import com.yesgrad.service.domain.*;
+import com.yesgrad.service.enums.UserRole;
 import com.yesgrad.service.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,7 @@ public class AuthController {
                 request.firstName,
                 request.lastName,
                 request.zipCode,
-                User.UserRole.valueOf(request.role.toUpperCase())
+                UserRole.valueOf(request.role.toUpperCase())
             )
             .flatMap(user -> authService.login(request.email, request.password)
                 .map(loginResponse -> {
@@ -99,7 +100,7 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequest request) {
         log.info("Forgot password request for email: {}", request.email());
 
-        return authService.forgotPassword(request.email())
+        return authService.forgotPassword(request.email(), request.ipAddress())
                 .map(message -> ResponseEntity.ok(CommonResponse.success(message)))
                 .doOnError(error -> log.error("Forgot password failed", error));
     }
@@ -160,11 +161,12 @@ public class AuthController {
     ) {}
 
     public record ForgotPasswordRequest(
-        @NotBlank @Email String email
+        @NotBlank @Email String email,
+        @NotBlank String ipAddress
     ) {}
 
     public record ResetPasswordRequest(
         @NotBlank String token,
-        @NotBlank @Size(min = 6) String newPassword
+        @NotBlank @Size(min = 8) String newPassword
     ) {}
 }

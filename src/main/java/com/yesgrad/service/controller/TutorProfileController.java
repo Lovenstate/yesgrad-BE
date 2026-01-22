@@ -7,7 +7,6 @@ import com.yesgrad.service.service.TutorProfileService;
 import com.yesgrad.service.service.TutorSettingsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.codec.multipart.FilePart;
