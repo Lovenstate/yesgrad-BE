@@ -1,10 +1,7 @@
 package com.yesgrad.service.controller;
 
 import com.yesgrad.service.domain.*;
-import com.yesgrad.service.service.FileStorageService;
-import com.yesgrad.service.service.JwtAuthenticationToken;
-import com.yesgrad.service.service.TutorProfileService;
-import com.yesgrad.service.service.TutorSettingsService;
+import com.yesgrad.service.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -14,7 +11,6 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/tutor/profile")
@@ -24,6 +20,7 @@ public class TutorProfileController {
     private final TutorProfileService tutorProfileService;
     private final FileStorageService fileStorageService;
     private final TutorSettingsService tutorSettingsService;
+    private final TutorCompletionService tutorCompletionService;
 
     @GetMapping
     public Mono<CommonResponse<TutorProfileResponse>> getProfile(Authentication authentication) {
@@ -32,6 +29,8 @@ public class TutorProfileController {
                 .map(profile -> CommonResponse.success("Profile retrieved", profile))
                 .defaultIfEmpty(CommonResponse.success("No profile found", null));
     }
+
+    // create get endpoint to get tutor profile by userId
 
     @GetMapping("/settings")
     public Mono<CommonResponse<TutorSettingsResponse>> getTutorSettings(Authentication authentication) {
@@ -84,7 +83,10 @@ public class TutorProfileController {
             @RequestBody TutorProfileRequest request) {
         Long userId = ((JwtAuthenticationToken) authentication).getUserId();
         return tutorProfileService.updateProfile(userId, request)
-                .map(profile -> CommonResponse.success("Profile updated successfully", profile));
+                .map(profile -> {
+                    tutorCompletionService.updateTutorCompletion(profile.getId());
+                    return CommonResponse.success("Tutor profile updated successfully", profile);
+                });
     }
 
     @PostMapping(value = "/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -97,20 +99,4 @@ public class TutorProfileController {
                         .thenReturn(CommonResponse.success("Photo uploaded successfully", photoUrl))
                 );
     }
-
-    private TutorProfileRequest convertToRequest(TutorProfile profile) {
-        TutorProfileRequest request = new TutorProfileRequest();
-        request.setSchool(profile.getSchool());
-        request.setDegree(profile.getDegree());
-        request.setFieldOfStudy(profile.getFieldOfStudy());
-        request.setGraduationYear(profile.getGraduationYear());
-        request.setHourlyRate(profile.getHourlyRate());
-        request.setCancellationPolicy(profile.getCancellationPolicy());
-        request.setTravelPolicy(profile.getTravelPolicy());
-        request.setSubjects(List.of());
-        request.setLanguages(List.of());
-        request.setAvailability(List.of());
-        return request;
-    }
-
 }

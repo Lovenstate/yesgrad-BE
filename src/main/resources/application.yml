@@ -57,10 +57,13 @@ app:
 
 logging:
   level:
-    com.yesgrad: INFO
-    org.springframework.security: TRACE
+    com.yesgrad: DEBUG
+    org.springframework.security: DEBUG
     org.springframework.web: DEBUG
+    org.springframework.boot: INFO
     io.netty: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 management:
   endpoints:

@@ -104,14 +104,13 @@ public class TutorDashboardService {
                     TutorSubject tutorSubject = new TutorSubject();
                     tutorSubject.setTutorId(tutor.getId());
                     tutorSubject.setSubjectId(request.subjectId());
-                    tutorSubject.setLevelId(request.levelId());
                     tutorSubject.setHourlyRate(request.hourlyRate());
                     return tutorSubjectRepository.save(tutorSubject);
                 });
     }
 
-    public Flux<TutorSubject> findTutorSubjects(Long subjectId, Long levelId) {
-        return  tutorSubjectRepository.findBySubjectIdAndLevelId(subjectId, levelId);
+    public Flux<TutorSubject> findTutorSubjects(Long subjectId) {
+        return  tutorSubjectRepository.findBySubjectId(subjectId);
     }
 
     private String formatResponseRate(Double rate) {

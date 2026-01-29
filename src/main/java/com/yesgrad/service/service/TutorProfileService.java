@@ -58,12 +58,10 @@ public class TutorProfileService {
                 .map(this::mapToResponse);
     }
 
+    // need to see how to change that so education can be called
     private void applyProfileUpdates(TutorProfile profile, TutorProfileRequest request) {
-        profile.setSchool(request.getSchool());
-        profile.setDegree(request.getDegree());
-        profile.setFieldOfStudy(request.getFieldOfStudy());
-        profile.setGraduationYear(request.getGraduationYear());
-        profile.setHourlyRate(request.getHourlyRate());
+        profile.setBio(request.getBio());
+        profile.setHeadline(request.getHeadline());
         profile.setCancellationPolicy(request.getCancellationPolicy());
         profile.setTravelPolicy(request.getTravelPolicy());
         profile.setUpdatedAt(LocalDateTime.now());
@@ -124,6 +122,14 @@ public class TutorProfileService {
     public Mono<TutorProfile> getProfile(Long userId) {
         return profileRepository.findByUserId(userId);
     }
+
+    public Mono<TutorProfile> getTutorProfile(Long tutorId) {
+        return profileRepository.findById(tutorId);
+    }
+
+    public Mono<TutorProfile> saveTutorProfile(TutorProfile tutorProfile) {
+        return profileRepository.save(tutorProfile);
+    }
     
     public Mono<Void> updateProfilePhoto(Long userId, String photoUrl) {
         return profileRepository.findByUserId(userId)
@@ -167,6 +173,7 @@ public class TutorProfileService {
         return response;
     }
 
+    // dto that will return all tutor data for me, need to adjust
     public Mono<TutorProfileResponse> getProfileWithDetails(Long userId) {
         return profileRepository.findByUserId(userId)
                 .flatMap(profile -> {
@@ -208,15 +215,13 @@ public class TutorProfileService {
                                 response.setProfilePhotoUrl(profile.getProfilePhotoUrl());
                                 response.setBio(profile.getBio());
                                 response.setInstantBook(profile.getInstantBook());
-                                response.setSchool(profile.getSchool());
-                                response.setDegree(profile.getDegree());
-                                response.setFieldOfStudy(profile.getFieldOfStudy());
-                                response.setGraduationYear(profile.getGraduationYear());
-                                response.setHourlyRate(profile.getHourlyRate());
                                 response.setCancellationPolicy(profile.getCancellationPolicy());
                                 response.setTravelPolicy(profile.getTravelPolicy());
                                 response.setCreatedAt(profile.getCreatedAt());
                                 response.setUpdatedAt(profile.getUpdatedAt());
+                                response.setHeadline(profile.getHeadline());
+                                response.setOnboardingStatus(profile.getOnboardingStatus());
+                                response.setProfileCompletion(profile.getProfileCompletion());
 
                                 response.setSubjects(tuple.getT1());
                                 response.setLanguages(tuple.getT2());

@@ -12,13 +12,11 @@ public class TutorProfile {
     private Long id;
     private Long userId;
     private String profilePhotoUrl;
+    private String headline;
     private String bio;
     private Boolean instantBook;
-    private String school;
-    private String degree;
-    private String fieldOfStudy;
-    private Integer graduationYear;
-    private Double hourlyRate; // this should be like a range based on what he charges per subject
+    private String onboardingStatus;  // STARTED | COMPLETE
+    private Integer profileCompletion; // 0–100
     private String cancellationPolicy;
     private String travelPolicy;
     private LocalDateTime createdAt;

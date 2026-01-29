@@ -23,4 +23,7 @@ public class TutorProfileResponse {
     private List<AvailabilityDto> availability;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String onboardingStatus;
+    private Integer profileCompletion;
+    private String headline;
 }

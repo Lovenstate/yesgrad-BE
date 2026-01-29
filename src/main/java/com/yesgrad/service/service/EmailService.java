@@ -82,6 +82,7 @@ public class EmailService {
         return switch (type) {
             case "account-registration" -> buildRegistrationTemplate(firstName, params);
             case "account-activation" -> buildActivationTemplate(firstName, params);
+            case "email-verification" -> buildEmailVerificationTemplate(firstName, params);
             case "password-reset" -> buildPasswordResetTemplate(firstName, params);
             case "password-reset-success" -> buildPasswordResetSuccessTemplate(firstName, params);
             default -> throw new IllegalArgumentException("Unknown template type: " + type);
@@ -92,6 +93,7 @@ public class EmailService {
         return switch (type) {
             case "account-registration" -> "Welcome to YesGrad!";
             case "account-activation" -> "Activate Your YesGrad Account";
+            case "email-verification" -> "Verify Your Email Address";
             case "password-reset" -> "Reset Your Password";
             case "password-reset-success" -> "Password Reset Successful";
             default -> "YesGrad Notification";
@@ -125,6 +127,23 @@ public class EmailService {
             </body>
             </html>
             """.formatted(firstName, activationLink);
+    }
+
+    private String buildEmailVerificationTemplate(String firstName, Map<String, Object> params) {
+        String verificationLink = (String) params.get("verificationLink");
+        return """
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2>Verify Your Email</h2>
+                <p>Hi %s,</p>
+                <p>Thank you for registering! Please verify your email address to continue:</p>
+                <p><a href="%s" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
+                <p>This link expires in 24 hours.</p>
+                <p>If you didn't create an account, please ignore this email.</p>
+                <p>Best regards,<br>The YesGrad Team</p>
+            </body>
+            </html>
+            """.formatted(firstName, verificationLink);
     }
 
     private String buildPasswordResetTemplate(String firstName, Map<String, Object> params) {

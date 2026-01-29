@@ -8,5 +8,6 @@ import reactor.core.publisher.Mono;
 public interface TutorSubjectRepository extends ReactiveCrudRepository<TutorSubject, Long> {
     Flux<TutorSubject> findByTutorId(Long tutorId);
     Mono<Void> deleteByTutorId(Long tutorId);
-    Flux<TutorSubject> findBySubjectIdAndLevelId(Long subjectId, Long levelId);
+
+    Flux<TutorSubject> findBySubjectId(Long subjectId);
 }

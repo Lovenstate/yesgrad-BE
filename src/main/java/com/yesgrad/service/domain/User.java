@@ -60,4 +60,16 @@ public class User {
     @Column("reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
 
+    @Column("email_verified")
+    private Boolean emailVerified;
+
+    @Column("verification_token")
+    private String verificationToken;
+
+    @Column("verification_token_expiry")
+    private LocalDateTime verificationTokenExpiry;
+
+    @Column("first_login")
+    private Boolean firstLogin;
+
 }
