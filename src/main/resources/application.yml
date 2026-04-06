@@ -6,6 +6,18 @@ spring:
     name: yesgrad-service
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
+  r2dbc:
+    url: ${R2DBC_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    pool:
+      enabled: true
+      initial-size: 1
+      max-size: 10
+  datasource:
+    url: ${JDBC_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   flyway:
     enabled: true
     baseline-on-migrate: true
