@@ -1,6 +1,44 @@
 package com.yesgrad.service.controller;
 
+import com.yesgrad.service.domain.*;
+import com.yesgrad.service.dto.TutorDashboardResponse;
+import com.yesgrad.service.service.JwtAuthenticationToken;
+import com.yesgrad.service.service.TutorDashboardService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
+
+@RestController
+@RequestMapping("/api/tutor")
+@RequiredArgsConstructor
 public class TutorController {
+
+    private final TutorDashboardService dashboardService;
+
+    @GetMapping("/dashboard")
+    public Mono<CommonResponse<TutorDashboardResponse>> getDashboard(Authentication authentication) {
+        Long userId = ((JwtAuthenticationToken) authentication).getUserId();
+        return dashboardService.getDashboardData(userId)
+                .map(data -> CommonResponse.success("Dashboard data retrieved successfully", data));
+    }
+
+//    GET /tutors/search?subject=&subjectId=&minPrice=&maxPrice=&lessonFormat=&sortBy=
+//
+//    GET /tutors/{tutorId}/availability?date=
+
+    // GET /tutor/sessions/upcoming
+    // GET /tutor/earnings
+    // GET /tutor/profile/completion
+    // GET /tutor/subjects
+    // GET /tutor/messages/unread-count
+    // GET /tutor/payout/status
+
+
+
+
+
+
     //#### Tutor Profile Endpoints
 //    POST   /api/tutors/apply           # Apply to become tutor
 //    GET    /api/tutors/profile         # Get tutor profile
@@ -24,4 +62,5 @@ public class TutorController {
 //    POST   /api/tutors/availability    # Set availability slots
 //    PUT    /api/tutors/availability/{id} # Update availability slot
 //    DELETE /api/tutors/availability/{id} # Delete availability slot
+
 }

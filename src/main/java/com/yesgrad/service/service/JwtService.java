@@ -22,10 +22,17 @@ public class JwtService {
     private Long expiration;
     
     public String generateToken(User user) {
+        return generateToken(user, null);
+    }
+    
+    public String generateToken(User user, Long profileId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("email", user.getEmail());
         claims.put("role", user.getRole().name());
+        if (profileId != null) {
+            claims.put("profileId", profileId);
+        }
         
         return Jwts.builder()
             .claims(claims)
@@ -34,6 +41,19 @@ public class JwtService {
             .expiration(new Date(System.currentTimeMillis() + expiration))
             .signWith(getSigningKey())
             .compact();
+    }
+
+    public String generateResetToken(String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("email", email);
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(email)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey())
+                .compact();
     }
     
     public Claims extractClaims(String token) {

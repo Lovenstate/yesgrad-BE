@@ -26,14 +26,14 @@ public class SecurityConfig {
             .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
             .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
             .authorizeExchange(exchanges -> exchanges
-                .pathMatchers("/api/auth/**").permitAll()
-                .pathMatchers("/health").permitAll()
-                .pathMatchers("/test-db").permitAll()
-                .pathMatchers("/actuator/**").permitAll()
-                .pathMatchers("/api/subjects/**").permitAll()
-                .pathMatchers("/api/student/**").authenticated()
-                .pathMatchers("/api/tutor/**").authenticated()
-                .anyExchange().authenticated()
+                    .pathMatchers("/api/auth/**").permitAll()
+                    .pathMatchers("/health").permitAll()
+                    .pathMatchers("/test-db").permitAll()
+                    .pathMatchers("/actuator/**").permitAll()
+                    .pathMatchers("/api/subjects/**").permitAll()
+                    .pathMatchers("/api/student/**").authenticated()
+                    .pathMatchers("/api/tutor/**").authenticated()
+                    .anyExchange().authenticated()
             )
             .build();
     }

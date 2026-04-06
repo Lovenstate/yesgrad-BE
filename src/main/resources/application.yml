@@ -1,18 +1,11 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   application:
     name: yesgrad-service
-  r2dbc:
-    url: r2dbc:postgresql://localhost:5432/yesGradLocal
-    username: postgres
-    password: admin
-    pool:
-      enabled: true
-      initial-size: 1
-      max-size: 10
-  datasource:
-    url: jdbc:postgresql://localhost:5432/yesGradLocal
-    username: postgres
-    password: admin
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -23,9 +16,9 @@ spring:
       mode: never
   security:
     jwt:
-      secret: ${JWT_SECRET:mySecretKey123456789012345678901234567890}
-      expiration: 86400000 # 24 hours
-      refresh-expiration: 604800000 # 7 days
+      secret: ${JWT_SECRET}
+      expiration: 86400000
+      refresh-expiration: 604800000
   servlet:
     multipart:
       max-file-size: 5MB
@@ -33,14 +26,27 @@ spring:
 
 file:
   upload:
-    dir: uploads/profiles
+    dir: ${FILE_UPLOAD_DIR:/tmp/uploads/profiles}
 
-logging:
-  level:
-    com.yesgrad: DEBUG
-    org.springframework.security: TRACE
-    org.springframework.web: DEBUG
-    io.netty: WARN
+yesgrad:
+  company-name: ${COMPANY_NAME:YesGrad LLC}
+  phone-number: ${PHONE_NUMBER:(800) 913-1372}
+
+app:
+  yesgrad:
+    company-name: ${COMPANY_NAME:YesGrad LLC}
+    phone-number: ${PHONE_NUMBER:(800) 913-1372}
+  frontend:
+    url: ${FRONTEND_URL}
+  security:
+    password-history-limit: 5
+    reset-rate-limit: 3
+    reset-rate-window-hours: 1
+  brevo:
+    api-key: ${BREVO_API_KEY}
+    sender:
+      email: ${BREVO_SENDER_EMAIL}
+      name: ${BREVO_SENDER_NAME:YesGrad}
 
 management:
   endpoints:

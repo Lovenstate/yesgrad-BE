@@ -17,6 +17,7 @@ build/
 bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
+!**/src/main/resources/application-local.yml
 
 ### IntelliJ IDEA ###
 .idea
@@ -40,3 +41,17 @@ out/
 ### Documentation ###
 *.md
 *.MD
+
+### Database Migrations ###
+db.migration/
+*.sql
+
+### Images ###
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.svg
+*.ico
+*.webp

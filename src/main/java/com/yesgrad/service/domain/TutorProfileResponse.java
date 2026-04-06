@@ -9,6 +9,8 @@ public class TutorProfileResponse {
     private Long id;
     private Long userId;
     private String profilePhotoUrl;
+    private String bio;
+    private Boolean instantBook;
     private String school;
     private String degree;
     private String fieldOfStudy;
@@ -21,4 +23,7 @@ public class TutorProfileResponse {
     private List<AvailabilityDto> availability;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String onboardingStatus;
+    private Integer profileCompletion;
+    private String headline;
 }

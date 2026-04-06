@@ -1,17 +1,17 @@
 package com.yesgrad.service.repository;
 
 import com.yesgrad.service.domain.Subject;
-import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Repository
-public interface SubjectRepository extends R2dbcRepository<Subject, Long> {
-    
-    Flux<Subject> findByIsActiveTrue();
-    
-    Flux<Subject> findByCategory(String category);
+public interface SubjectRepository extends ReactiveCrudRepository<Subject, Long> {
     
     Mono<Subject> findByName(String name);
+
+    Flux<Subject> findByParentId(Long parentId);
+
+    Flux<Subject> findByNameContainingIgnoreCase(String name);
 }

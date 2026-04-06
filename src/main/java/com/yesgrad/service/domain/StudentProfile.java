@@ -19,18 +19,24 @@ public class StudentProfile {
     
     @Column("user_id")
     private Long userId;
+
+    @Column("bio")
+    private String bio;
     
     @Column("grade_level")
     private String gradeLevel;
     
-    @Column("school_name")
-    private String schoolName;
+    @Column("school")
+    private String school;
     
     @Column("learning_goals")
     private String learningGoals;
     
-    @Column("preferred_learning_style")
-    private String preferredLearningStyle;
+    @Column("learning_style")
+    private String learningStyle;
+    
+    @Column("timezone")
+    private String timezone;
     
     @Column("budget_min")
     private BigDecimal budgetMin;
@@ -40,12 +46,12 @@ public class StudentProfile {
     
     @Column("lesson_format")
     private LessonFormat lessonFormat;
-    
-    @Column("onboarding_completed")
-    private Boolean onboardingCompleted;
-    
-    @Column("subjects_json")
-    private String subjectsJson;
+
+    @Column("onboarding_status")
+    private String onboardingStatus;
+
+    @Column("profile_completion")
+    private Integer profileCompletion;
     
     @Column("created_at")
     private LocalDateTime createdAt;
