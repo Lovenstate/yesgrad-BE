@@ -12,13 +12,20 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LessonDTO {
+public class SessionResponseDTO {
     private Long id;
-    private String studentName;
+    private Long tutorId;
+    private Long studentId;
+    private String tutorName;
     private String subject;
     private LocalDateTime scheduledAt;
     private Integer durationMinutes;
     private BigDecimal amount;
+    private BigDecimal hourlyRate;
+    private String lessonFormat;
+    private String location;
     private String status;
     private String notes;
+    private String cancellationReason;
+    private LocalDateTime createdAt;
 }

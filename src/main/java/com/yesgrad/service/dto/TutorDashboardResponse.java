@@ -12,10 +12,10 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TutorDashboardDTO {
+public class TutorDashboardResponse {
 
     private String name;
-    private Long hoursTutored;
+    private Double hoursTutored;
     private BigDecimal rating;
     private Long ratingCount;
     private Boolean hasDirectDeposit;
@@ -25,6 +25,8 @@ public class TutorDashboardDTO {
     private BigDecimal amountPaid;
     private BigDecimal amountOwed;
     private Long unreadMessages;
-    private List<LessonDTO> upcomingLessons;
-    private List<LessonDTO> recentLessons;
+    private List<SessionResponse> upcomingLessons;
+    private List<SessionResponse> recentLessons;
+    private Integer profileCompletion;
+    private String  onboardingStatus;
 }

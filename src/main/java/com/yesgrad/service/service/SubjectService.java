@@ -33,6 +33,11 @@ public class SubjectService {
                 .collectList();
     }
 
+    public Mono<Void> saveSubjects(List<Subject> subjects) {
+        return subjectRepository.saveAll(subjects)
+                .then();
+    }
+
     private List<SubjectNode> buildTree(List<Subject> subjects) {
         Map<Long, List<Subject>> grouped =
                 subjects.stream()

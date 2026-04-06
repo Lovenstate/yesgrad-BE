@@ -14,6 +14,10 @@ java {
 	}
 }
 
+bootJar {
+	archiveFileName = 'app.jar'
+}
+
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
@@ -52,6 +56,10 @@ dependencies {
 	// Utilities
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+	
+	// Caching
+	implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
 	
 	// Testing
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

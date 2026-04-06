@@ -39,7 +39,7 @@ public class AuthController {
             .flatMap(user -> {
                 // Auto-login only for non-tutor users
                 if (user.getRole() != UserRole.TUTOR) {
-                    return authService.login(request.email(), request.password())
+                     return authService.login(request.email(), request.password())
                             .map(loginResponse -> {
                                 setAuthCookie(response, loginResponse.token());
                                 return user;
@@ -62,7 +62,13 @@ public class AuthController {
             .map(loginResponse -> {
                 setAuthCookie(response, loginResponse.token());
                 log.info("Login successful for email: {}", request.email);
-                return ResponseEntity.ok(CommonResponse.success(new LoginResponseDTO(loginResponse.role(), loginResponse.firstLogin())));
+                return ResponseEntity.ok(CommonResponse.success(new LoginResponseDTO(
+                        loginResponse.role(),
+                        loginResponse.firstLogin(),
+                        loginResponse.onboardingStatus(),
+                        loginResponse.profileCompletion(),
+                        loginResponse.emailVerified()
+                )));
             })
             .doOnError(error -> log.error("Login failed for email: {}", request.email));
     }
@@ -194,5 +200,9 @@ public class AuthController {
         @NotBlank @Email String email
     ) {}
 
-    public record LoginResponseDTO(UserRole role, boolean isFirstLogin ) {}
+    public record LoginResponseDTO(UserRole role,
+                                   boolean isFirstLogin,
+                                   String onboardingStatus,
+                                   Integer profileCompletion,
+                                   Boolean emailVerified) {}
 }

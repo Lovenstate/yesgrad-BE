@@ -1,0 +1,40 @@
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/yesGradLocal
+    username: postgres
+    password: admin
+    pool:
+      enabled: true
+      initial-size: 2
+      max-size: 10
+      max-acquire-time: 3s
+      max-idle-time: 30m
+  datasource:
+    url: jdbc:postgresql://localhost:5432/yesGradLocal
+    username: postgres
+    password: admin
+  security:
+    jwt:
+      secret: mySecretKey123456789012345678901234567890
+
+file:
+  upload:
+    dir: ${user.dir}/uploads/profiles
+
+app:
+  frontend:
+    url: http://localhost:3000
+  brevo:
+    api-key: key
+    sender:
+      email: lovens@lovenstate.com
+
+logging:
+  level:
+    com.yesgrad: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.boot: INFO
+    io.netty: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

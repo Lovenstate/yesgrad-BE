@@ -80,13 +80,14 @@ public class AuthService {
                                         return Mono.empty();
                                     }).then(Mono.defer(() -> {
                                         if (userWithToken.getRole() == UserRole.STUDENT) {
-                                        StudentProfile profile = new StudentProfile();
-                                        profile.setUserId(userWithToken.getId());
-                                        profile.setOnboardingCompleted(false);
-                                        profile.setCreatedAt(LocalDateTime.now());
-                                        profile.setUpdatedAt(LocalDateTime.now());
-                                        return studentProfileRepository.save(profile).thenReturn(userWithToken);
-                                    }
+                                            StudentProfile profile = new StudentProfile();
+                                            profile.setUserId(userWithToken.getId());
+                                            profile.setOnboardingStatus("STARTED");
+                                            profile.setProfileCompletion(0);
+                                            profile.setCreatedAt(LocalDateTime.now());
+                                            profile.setUpdatedAt(LocalDateTime.now());
+                                            return studentProfileRepository.save(profile).thenReturn(userWithToken);
+                                        }
 
                                         if (userWithToken.getRole() == UserRole.TUTOR) {
                                             TutorProfile profile = new TutorProfile();
@@ -133,11 +134,24 @@ public class AuthService {
                 user.setLastLogin(LocalDateTime.now());
                 boolean isFirstLogin = Boolean.TRUE.equals(user.getFirstLogin());
                 user.setFirstLogin(false);
+                
                 return userRepository.save(user)
-                    .map(savedUser -> {
-                        String token = jwtService.generateToken(savedUser);
-                        log.info("User logged in successfully: {} (ID: {})", email, savedUser.getId());
-                        return new LoginResponse(token, savedUser.getRole(), isFirstLogin);
+                    .flatMap(savedUser -> {
+                        if (savedUser.getRole() == UserRole.TUTOR) {
+                            return tutorProfileRepository.findByUserId(savedUser.getId())
+                                    .map(profile -> {
+                                        String token = jwtService.generateToken(savedUser, profile.getId());
+                                        log.info("User logged in successfully: {} (ID: {})", email, savedUser.getId());
+                                        return new LoginResponse(token, savedUser.getRole(), isFirstLogin, null, null, savedUser.getEmailVerified());
+                                    });
+                        } else {
+                            return studentProfileRepository.findByUserId(savedUser.getId())
+                                    .map(profile -> {
+                                        String token = jwtService.generateToken(savedUser, profile.getId());
+                                        log.info("User logged in successfully: {} (ID: {})", email, savedUser.getId());
+                                        return new LoginResponse(token, savedUser.getRole(), isFirstLogin, profile.getOnboardingStatus(), profile.getProfileCompletion(), savedUser.getEmailVerified());
+                                    });
+                        }
                     });
             })
             .doOnError(error -> {

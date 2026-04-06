@@ -1,116 +1,76 @@
 package com.yesgrad.service.service;
 
-import com.yesgrad.service.domain.Lesson;
 import com.yesgrad.service.domain.TutorProfile;
-import com.yesgrad.service.domain.TutorSubject;
-import com.yesgrad.service.domain.TutorSubjectRequest;
-import com.yesgrad.service.dto.LessonDTO;
-import com.yesgrad.service.dto.TutorDashboardDTO;
+import com.yesgrad.service.domain.User;
+import com.yesgrad.service.dto.SessionResponse;
+import com.yesgrad.service.dto.TutorDashboardResponse;
 import com.yesgrad.service.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TutorDashboardService {
-
-    private final TutorProfileRepository tutorProfileRepository;
-    private final LessonRepository lessonRepository;
+    private final SessionRepository sessionRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final RatingRepository ratingRepository;
-    private final TutorSubjectRepository tutorSubjectRepository;
+    private final TutorProfileRepository tutorProfileRepository;
+    private final LedgerEntryRepository ledgerEntryRepository;
 
-    public Mono<TutorDashboardDTO> getDashboardData(Long userId) {
-        return userRepository.findById(userId)
-                .flatMap(user -> {
-                    // Get all dashboard data in parallel
-
-                    Mono<Long> hoursMono = lessonRepository.getTotalHoursByTutor(userId)
-                            .defaultIfEmpty(0L)
-                            .map(minutes -> minutes / 60);
-
-                    Mono<Double> ratingMono = ratingRepository.getAverageRatingByTutor(userId)
-                            .defaultIfEmpty(0.0);
-
-                    Mono<Long> ratingCountMono = ratingRepository.countRatingsByTutor(userId)
-                            .defaultIfEmpty(0L);
-
-                    Mono<BigDecimal> earningsMono = lessonRepository.getTotalEarningsByTutor(userId)
-                            .defaultIfEmpty(BigDecimal.ZERO);
-
-                    Mono<Long> unreadMessagesMono = messageRepository.countUnreadMessages(userId)
-                            .defaultIfEmpty(0L);
-
-                    Mono<List<Lesson>> upcomingLessonsMono = lessonRepository
-                            .findUpcomingLessonsByTutor(userId, LocalDateTime.now(), 5)
-                            .collectList();
-
-                    Mono<List<Lesson>> recentLessonsMono = lessonRepository
-                            .findRecentCompletedLessons(userId, 5)
-                            .collectList();
-
-                    // Get response metrics for last 60 days
-                    LocalDateTime since60Days = LocalDateTime.now().minusDays(60);
-
-                    Mono<Double> responseRateMono = messageRepository.getResponseRate(userId, since60Days)
-                            .defaultIfEmpty(0.0);
-
-                    Mono<Double> responseTimeMono = messageRepository.getAverageResponseTimeHours(userId, since60Days)
-                            .defaultIfEmpty(0.0);
-
-                    return Mono.zip(
-                                    Mono.zip(hoursMono, ratingMono, ratingCountMono, earningsMono, unreadMessagesMono, upcomingLessonsMono, recentLessonsMono),
-                                    Mono.zip(responseRateMono, responseTimeMono))
-                            .map(tuple -> {
-                                Long hours = tuple.getT1().getT1();
-                                Double rating = tuple.getT1().getT2();
-                                Long ratingCount = tuple.getT1().getT3();
-                                BigDecimal earnings = tuple.getT1().getT4();
-                                Long unreadMessages = tuple.getT1().getT5();
-                                List<Lesson> upcomingLessons = tuple.getT1().getT6();
-                                List<Lesson> recentLessons = tuple.getT1().getT7();
-                                Double responseRate = tuple.getT2().getT1();
-                                Double responseTime = tuple.getT2().getT2();
-
-                                return TutorDashboardDTO.builder()
-                                        .name(user.getFirstName() + " " + user.getLastName())
-                                        .hoursTutored(hours)
-                                        .rating(rating != null ? BigDecimal.valueOf(rating) : null)
-                                        .ratingCount(ratingCount)
-                                        .responseRate(formatResponseRate(responseRate))
-                                        .responseTime(formatResponseTime(responseTime))
-                                        .totalEarnings(earnings)
-                                        .amountPaid(BigDecimal.ZERO) // TODO: Calculate from payments
-                                        .amountOwed(earnings) // TODO: Calculate pending payments
-                                        .unreadMessages(unreadMessages)
-                                        .upcomingLessons(mapToLessonDTOs(upcomingLessons))
-                                        .recentLessons(mapToLessonDTOs(recentLessons))
-                                        .build();
-                            });
-                });
-    }
-
-    public Mono<TutorSubject> addTutorSubject(Long userId, TutorSubjectRequest request) {
+    @Cacheable(value = "tutorDashboard", key = "#userId", unless = "#result == null")
+    public Mono<TutorDashboardResponse> getDashboardData(Long userId) {
         return tutorProfileRepository.findByUserId(userId)
-                .flatMap(tutor -> {
-                    TutorSubject tutorSubject = new TutorSubject();
-                    tutorSubject.setTutorId(tutor.getId());
-                    tutorSubject.setSubjectId(request.subjectId());
-                    tutorSubject.setHourlyRate(request.hourlyRate());
-                    return tutorSubjectRepository.save(tutorSubject);
-                });
+                .timeout(Duration.ofSeconds(3))
+                .onErrorResume(e -> {
+                    log.error("Failed to fetch tutor profile for userId: {}", userId, e);
+                    return Mono.empty();
+                }).flatMap(tutor -> buildDashboardResponse(userId, tutor)
+                        .map(dashboardComponents -> mapToResponse(dashboardComponents, tutor)));
     }
 
-    public Flux<TutorSubject> findTutorSubjects(Long subjectId) {
-        return  tutorSubjectRepository.findBySubjectId(subjectId);
+    private Mono<DashboardComponents> buildDashboardResponse(Long userId, TutorProfile tutor) {
+        Mono<User> userMono = safeFetch(userRepository.findById(userId), new User(), "user");
+
+        LocalDateTime since60Days = LocalDateTime.now().minusDays(60);
+
+        Mono<Double> hoursMono = safeFetch(sessionRepository.getTotalHoursByTutor(tutor.getId()), 0.0, "Hours");
+        Mono<Double> ratingMono = safeFetch(ratingRepository.getAverageRatingByTutor(tutor.getId()), 0.0, "Ratings");
+        Mono<Long> ratingCountMono = safeFetch(ratingRepository.countRatingsByTutor(tutor.getId()), 0L, "RatingCount");
+        Mono<BigDecimal> earningsMono = safeFetch(sessionRepository.getTotalEarningsByTutor(tutor.getId()), BigDecimal.ZERO, "Earnings");
+        Mono<Long> unreadMessagesMono = safeFetch(messageRepository.countUnreadMessages(userId), 0L, "unreadMessages");
+        Mono<List<SessionResponse>> upcomingLessonsMono = safeFetch(sessionRepository.findUpcomingLessonsByTutor(tutor.getId(), LocalDate.now(), 5).collectList(), List.of(), "UpcomingLessons");
+        Mono<List<SessionResponse>> recentLessonsMono = safeFetch(sessionRepository.findRecentCompletedLessons(tutor.getId(), 5).collectList(), List.of(), "RecentLessons");
+        Mono<Double> responseRateMono = safeFetch(messageRepository.getResponseRate(userId, since60Days), 0.0, "ResponseRate");
+        Mono<Double> responseTimeMono = safeFetch(messageRepository.getAverageResponseTimeHours(userId, since60Days), 0.0, "ResponseTime");
+
+        return Mono.zip(
+                Mono.zip(userMono, hoursMono, ratingMono, ratingCountMono, earningsMono, unreadMessagesMono, upcomingLessonsMono, recentLessonsMono),
+                Mono.zip(responseRateMono, responseTimeMono))
+                .map(tuple -> new DashboardComponents(
+                        tuple.getT1().getT1(), tuple.getT1().getT2(), tuple.getT1().getT3(), tuple.getT1().getT4(),
+                        tuple.getT1().getT5(), tuple.getT1().getT6(), tuple.getT1().getT7(), tuple.getT1().getT8(),
+                        tuple.getT2().getT1(), tuple.getT2().getT2()
+                ));
+    }
+
+    private <T> Mono<T> safeFetch(Mono<T> source, T defaultValue, String context) {
+        return source.timeout(Duration.ofSeconds(3))
+                .onErrorResume(e -> {
+                    log.warn("Failed to fetch {} for dashboard (non-fatal)", context, e);
+                    return Mono.just(defaultValue);
+                })
+                .defaultIfEmpty(defaultValue);
     }
 
     private String formatResponseRate(Double rate) {
@@ -123,18 +83,38 @@ public class TutorDashboardService {
         return String.format("%.1f hours", hours);
     }
 
-    private List<LessonDTO> mapToLessonDTOs(List<Lesson> lessons) {
-        return lessons.stream()
-                .map(lesson -> LessonDTO.builder()
-                        .id(lesson.getId())
-                        .subject(lesson.getSubject())
-                        .scheduledAt(lesson.getScheduledAt())
-                        .durationMinutes(lesson.getDurationMinutes())
-                        .amount(lesson.getAmount())
-                        .status(lesson.getStatus().toString())
-                        .notes(lesson.getNotes())
-                        .build())
-                .collect(Collectors.toList());
+    private TutorDashboardResponse mapToResponse(DashboardComponents c, TutorProfile tutor) {
+        String fullName = (c.user().getFirstName() != null ? c.user().getFirstName() : "") + " "
+                + (c.user().getLastName() != null ? c.user().getLastName() : "");
+
+        return TutorDashboardResponse.builder()
+                .name(fullName)
+                .hoursTutored(c.hours())
+                .rating(c.rating() != null ? BigDecimal.valueOf(c.rating()) : null)
+                .ratingCount(c.ratingCount())
+                .responseRate(formatResponseRate(c.responseRate()))
+                .responseTime(formatResponseTime(c.responseTime()))
+                .totalEarnings(c.earnings())
+                .amountPaid(BigDecimal.ZERO)
+                .amountOwed(c.earnings())
+                .unreadMessages(c.unreadMessages())
+                .profileCompletion(tutor.getProfileCompletion() != null ? tutor.getProfileCompletion() : 0)
+                .onboardingStatus(tutor.getOnboardingStatus() != null ? tutor.getOnboardingStatus() : "STARTED")
+                .upcomingLessons(c.upcomingLessons())
+                .recentLessons(c.recentLessons())
+                .build();
     }
 
+    private record DashboardComponents(
+            User user,
+            Double hours,
+            Double rating,
+            Long ratingCount,
+            BigDecimal earnings,
+            Long unreadMessages,
+            List<SessionResponse> upcomingLessons,
+            List<SessionResponse> recentLessons,
+            Double responseRate,
+            Double responseTime
+    ) {}
 }

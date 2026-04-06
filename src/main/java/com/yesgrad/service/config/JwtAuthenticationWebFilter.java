@@ -35,6 +35,7 @@ public class JwtAuthenticationWebFilter implements WebFilter {
             String token = cookie.getValue();
             Long userId = jwtService.extractClaims(token).get("userId", Long.class);
             String role = jwtService.extractClaims(token).get("role", String.class);
+            Long profileId = jwtService.extractClaims(token).get("profileId", Long.class);
             
             if (userId != null && role != null) {
                 Authentication authentication = new JwtAuthenticationToken(
@@ -43,11 +44,19 @@ public class JwtAuthenticationWebFilter implements WebFilter {
                     List.of(new SimpleGrantedAuthority("ROLE_" + role))
                 );
                 
+                // Add profileId to request attributes if present
+                if (profileId != null) {
+                    exchange.getAttributes().put("profileId", profileId);
+                }
+
+                exchange.getAttributes().put("role", role);
+
+                
                 return chain.filter(exchange)
                     .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
             }
         }
-        
+
         return chain.filter(exchange);
     }
 }

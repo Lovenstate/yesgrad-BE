@@ -15,13 +15,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class TutorCompletionService {
 
     private final TutorProfileService tutorProfileService;
     private final TutorSubjectRepository tutorSubjectRepository;
     private final TutorEducationRepository tutorEducationRepository;
     private final TutorAvailabilityRepository tutorAvailabilityRepository;
+
+    public TutorCompletionService(
+            @Lazy TutorProfileService tutorProfileService,
+            TutorSubjectRepository tutorSubjectRepository,
+            TutorEducationRepository tutorEducationRepository,
+            TutorAvailabilityRepository tutorAvailabilityRepository) {
+        this.tutorProfileService = tutorProfileService;
+        this.tutorSubjectRepository = tutorSubjectRepository;
+        this.tutorEducationRepository = tutorEducationRepository;
+        this.tutorAvailabilityRepository = tutorAvailabilityRepository;
+    }
 
     public Mono<OnboardingStatusResponse> calculate(Long tutorId) {
         Mono<TutorProfile> tutorProfile = tutorProfileService.getTutorProfile(tutorId);
@@ -107,6 +117,16 @@ public class TutorCompletionService {
                                     return tutorProfileService.saveTutorProfile(tutor);
                                 })
                 );
+    }
+
+    public Mono<TutorProfile> updateTutorCompletionWithProfile(TutorProfile profile) {
+        return calculate(profile.getId())
+                .flatMap(status -> {
+                    profile.setProfileCompletion(status.profileCompletion());
+                    profile.setOnboardingStatus(status.onboardingStatus());
+                    profile.setUpdatedAt(LocalDateTime.now());
+                    return tutorProfileService.saveTutorProfile(profile);
+                });
     }
 
 }

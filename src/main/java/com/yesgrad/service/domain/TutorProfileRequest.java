@@ -15,7 +15,4 @@ public class TutorProfileRequest {
     private String headline;
     private String bio;
     private String travelPolicy;
-    private List<String> subjects;
-    private List<LanguageDto> languages;
-    private List<AvailabilityDto> availability;
 }

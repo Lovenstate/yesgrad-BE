@@ -1,47 +1,49 @@
 package com.yesgrad.service.service;
 
 import com.yesgrad.service.domain.*;
+import com.yesgrad.service.domain.Session;
+import com.yesgrad.service.dto.*;
 import com.yesgrad.service.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class TutorProfileService {
 
-    private final TutorProfileRepository profileRepository;
-    private final TutorSubjectRepository subjectRepository;
-    private final SubjectRepository subjectRepo;
-    private final TutorLanguageRepository languageRepository;
-    private final TutorAvailabilityRepository availabilityRepository;
+    private final TutorProfileRepository tutorProfileRepository;
+    private final TutorSubjectRepository tutorSubjectRepository;
+    private final SubjectRepository subjectRepository;
+    private final TutorLanguageRepository tutorLanguageRepository;
+    private final TutorAvailabilityRepository tutorAvailabilityRepository;
     private final TransactionalOperator transactionalOperator;
     private final TutorSettingsRepository tutorSettingsRepository;
+    private final TutorCompletionService tutorCompletionService;
+    private final SessionRepository sessionRepository;
 
     @Transactional
     public Mono<TutorProfile> updateProfile(Long userId, TutorProfileRequest request) {
         return transactionalOperator.transactional(
-                profileRepository.findByUserId(userId)
+                tutorProfileRepository.findByUserId(userId)
                         .switchIfEmpty(
                                 createNewProfile(userId)
-                                        .flatMap(profileRepository::save)
+                                        .flatMap(tutorProfileRepository::save)
                         )
                         .flatMap(profile -> {
                             applyProfileUpdates(profile, request);
-                            return profileRepository.save(profile);
+                            return tutorProfileRepository.save(profile);
                         })
-                        .flatMap(profile ->
-                                updateSubjects(profile.getId(), request.getSubjects())
-                                        .then(updateLanguages(profile.getId(), request.getLanguages()))
-                                        .then(updateAvailability(profile.getId(), request.getAvailability()))
-                                        .thenReturn(profile)
-                        )
         );
     }
 
@@ -60,10 +62,10 @@ public class TutorProfileService {
 
     // need to see how to change that so education can be called
     private void applyProfileUpdates(TutorProfile profile, TutorProfileRequest request) {
-        profile.setBio(request.getBio());
-        profile.setHeadline(request.getHeadline());
-        profile.setCancellationPolicy(request.getCancellationPolicy());
-        profile.setTravelPolicy(request.getTravelPolicy());
+        if (request.getBio() != null) profile.setBio(request.getBio());
+        if (request.getHeadline() != null) profile.setHeadline(request.getHeadline());
+        if (request.getCancellationPolicy() != null) profile.setCancellationPolicy(request.getCancellationPolicy());
+        if (request.getTravelPolicy() != null) profile.setTravelPolicy(request.getTravelPolicy());
         profile.setUpdatedAt(LocalDateTime.now());
     }
 
@@ -75,22 +77,43 @@ public class TutorProfileService {
         return Mono.just(profile);
     }
 
+    // to be removed, call should be made to all services to bring data to create dashboard data
+    // subjects, education
+    public Mono<TutorSubject> addTutorSubject(Long userId, TutorSubjectRequest request) {
+        return tutorProfileRepository.findByUserId(userId)
+                .flatMap(tutor -> {
+                    TutorSubject tutorSubject = new TutorSubject();
+                    tutorSubject.setTutorId(tutor.getId());
+                    tutorSubject.setSubjectId(request.subjectId());
+                    tutorSubject.setHourlyRate(request.hourlyRate());
+                    return tutorSubjectRepository.save(tutorSubject);
+                });
+    }
+
+    public Mono<List<TutorSubject>> findTutorSubjects(Long subjectId) {
+        return  tutorSubjectRepository.findBySubjectId(subjectId).collectList();
+    }
+
+    public Mono<List<TutorSubject>> findTutorSubjectsByTutorId(Long tutorId) {
+        return  tutorSubjectRepository.findByTutorId(tutorId).collectList();
+    }
+
     private Mono<Void> updateSubjects(Long tutorId, List<String> subjectNames) {
-        return subjectRepository.deleteByTutorId(tutorId)
+        return tutorSubjectRepository.deleteByTutorId(tutorId)
                 .thenMany(reactor.core.publisher.Flux.fromIterable(subjectNames)
-                        .flatMap(subjectRepo::findByName)
+                        .flatMap(subjectRepository::findByName)
                         .map(subject -> {
                             TutorSubject ts = new TutorSubject();
                             ts.setTutorId(tutorId);
                             ts.setSubjectId(subject.getId());
                             return ts;
                         })
-                        .flatMap(subjectRepository::save)
+                        .flatMap(tutorSubjectRepository::save)
                 ).then();
     }
 
     private Mono<Void> updateLanguages(Long tutorId, List<LanguageDto> languages) {
-        return languageRepository.deleteByTutorId(tutorId)
+        return tutorLanguageRepository.deleteByTutorId(tutorId)
                 .thenMany(reactor.core.publisher.Flux.fromIterable(languages)
                         .map(lang -> {
                             TutorLanguage tl = new TutorLanguage();
@@ -99,12 +122,12 @@ public class TutorProfileService {
                             tl.setProficiency(lang.getProficiency());
                             return tl;
                         })
-                        .flatMap(languageRepository::save)
+                        .flatMap(tutorLanguageRepository::save)
                 ).then();
     }
 
     private Mono<Void> updateAvailability(Long tutorId, List<AvailabilityDto> availability) {
-        return availabilityRepository.deleteByTutorId(tutorId)
+        return tutorAvailabilityRepository.deleteByTutorId(tutorId)
                 .thenMany(reactor.core.publisher.Flux.fromIterable(availability)
                         .map(avail -> {
                             TutorAvailability ta = new TutorAvailability();
@@ -115,29 +138,29 @@ public class TutorProfileService {
                             ta.setIsAvailable(avail.getIsAvailable());
                             return ta;
                         })
-                        .flatMap(availabilityRepository::save)
+                        .flatMap(tutorAvailabilityRepository::save)
                 ).then();
     }
 
     public Mono<TutorProfile> getProfile(Long userId) {
-        return profileRepository.findByUserId(userId);
+        return tutorProfileRepository.findByUserId(userId);
     }
 
     public Mono<TutorProfile> getTutorProfile(Long tutorId) {
-        return profileRepository.findById(tutorId);
+        return tutorProfileRepository.findById(tutorId);
     }
 
     public Mono<TutorProfile> saveTutorProfile(TutorProfile tutorProfile) {
-        return profileRepository.save(tutorProfile);
+        return tutorProfileRepository.save(tutorProfile);
     }
     
     public Mono<Void> updateProfilePhoto(Long userId, String photoUrl) {
-        return profileRepository.findByUserId(userId)
+        return tutorProfileRepository.findByUserId(userId)
                 .flatMap(profile -> {
                     String oldPhotoUrl = profile.getProfilePhotoUrl();
                     profile.setProfilePhotoUrl(photoUrl);
                     profile.setUpdatedAt(LocalDateTime.now());
-                    return profileRepository.save(profile)
+                    return tutorProfileRepository.save(profile)
                             .doOnSuccess(p -> {
                                 if (oldPhotoUrl != null && !oldPhotoUrl.isEmpty()) {
                                     deleteOldPhoto(oldPhotoUrl);
@@ -173,19 +196,35 @@ public class TutorProfileService {
         return response;
     }
 
+    public Mono<Void> addTutorSubjects(Long userId, TutorSubjectRequestDto requestDto) {
+        return tutorProfileRepository.findByUserId(userId)
+                .flatMapMany(profile -> Flux.fromIterable(requestDto.subjects())
+                        .map(request -> {
+                            TutorSubject tutorSubject = new TutorSubject();
+                            tutorSubject.setTutorId(profile.getId());
+                            tutorSubject.setSubjectId(request.subjectId());
+                            tutorSubject.setHourlyRate(request.hourlyRate());
+                            return tutorSubject;
+                        })
+                        .flatMap(tutorSubjectRepository::save)
+                        .then(tutorCompletionService.updateTutorCompletion(profile.getId()))
+                )
+                .then();
+    }
+
     // dto that will return all tutor data for me, need to adjust
     public Mono<TutorProfileResponse> getProfileWithDetails(Long userId) {
-        return profileRepository.findByUserId(userId)
+        return tutorProfileRepository.findByUserId(userId)
                 .flatMap(profile -> {
 
                     Mono<List<String>> subjectsMono =
-                            subjectRepository.findByTutorId(profile.getId())
-                                    .flatMap(ts -> subjectRepo.findById(ts.getSubjectId()))
+                            tutorSubjectRepository.findByTutorId(profile.getId())
+                                    .flatMap(ts -> subjectRepository.findById(ts.getSubjectId()))
                                     .map(Subject::getName)
                                     .collectList();
 
                     Mono<List<LanguageDto>> languagesMono =
-                            languageRepository.findByTutorId(profile.getId())
+                            tutorLanguageRepository.findByTutorId(profile.getId())
                                     .map(lang -> {
                                         LanguageDto dto = new LanguageDto();
                                         dto.setLanguage(lang.getLanguage());
@@ -195,7 +234,7 @@ public class TutorProfileService {
                                     .collectList();
 
                     Mono<List<AvailabilityDto>> availabilityMono =
-                            availabilityRepository.findByTutorId(profile.getId())
+                            tutorAvailabilityRepository.findByTutorId(profile.getId())
                                     .map(av -> {
                                         AvailabilityDto dto = new AvailabilityDto();
                                         dto.setDayOfWeek(av.getDayOfWeek());
@@ -230,6 +269,70 @@ public class TutorProfileService {
                                 return response;
                             });
                 });
+    }
+
+    public Mono<List<AvailableSlot>> getAvailableSlots(Long tutorId, LocalDate date) {
+        if (date.isBefore(LocalDate.now())) {
+            return Mono.just(List.of());
+        }
+
+        String dayOfWeek = date.getDayOfWeek().name();
+
+        return Mono.zip(
+                sessionRepository.findBookedSlotsByTutorAndDate(tutorId, date).collectList(),
+                tutorAvailabilityRepository.findByTutorIdAndDayOfWeek(tutorId, dayOfWeek).collectList()
+        ).map(tuple -> {
+            List<Session> booked = tuple.getT1();
+            List<TutorAvailability> availabilities = tuple.getT2();
+
+            List<AvailableSlot> slots = new ArrayList<>();
+            for (TutorAvailability availability : availabilities) {
+                LocalTime cursor = availability.getStartTime();
+                LocalTime end = availability.getEndTime();
+
+                while (!cursor.plusHours(1).isAfter(end)) {
+                    LocalTime slotStart = cursor;
+                    LocalTime slotEnd = cursor.plusHours(1);
+
+                    boolean isBooked = booked.stream().anyMatch(s ->
+                            s.getStartTime().isBefore(slotEnd) && s.getEndTime().isAfter(slotStart)
+                    );
+
+                    if (!isBooked) {
+                        slots.add(new AvailableSlot(date, slotStart, slotEnd));
+                    }
+                    cursor = slotEnd;
+                }
+            }
+            return slots;
+        });
+    }
+
+    public Mono<List<TutorStudentResponse>> getTutorStudents(Long tutorId) {
+        return sessionRepository.findStudentsByTutorId(tutorId)
+                .map(summary -> new TutorStudentResponse(
+                        summary.userId(),
+                        summary.name(),
+                        summary.email(),
+                        summary.totalSessions(),
+                        summary.totalHours(),
+                        summary.lastSessionAt(),
+                        summary.subjectsTaught() != null ? summary.subjectsTaught().split(",") : new String[]{}
+                ))
+                .collectList();
+    }
+
+    public Mono<List<TutorSubjectResponse>> getTutorSubjects(Long tutorId) {
+        return tutorSubjectRepository.findTutorSubjectsByTutorId(tutorId)
+                .collectList();
+    }
+
+    public Mono<List<TutorSearchResult>> searchTutors(
+            String search, Long subjectId, BigDecimal minPrice,
+            BigDecimal maxPrice, String sortBy
+    ) {
+        return tutorProfileRepository.searchTutors(search, subjectId, minPrice, maxPrice, sortBy)
+                .collectList();
     }
 
 }
