@@ -20,6 +20,7 @@ public class FlywayConfig {
                 .baselineOnMigrate(true)
                 .baselineVersion("8")
                 .outOfOrder(true)
+                .ignoreMigrationPatterns("*:missing", "*:future")
                 .load();
     }
 }
