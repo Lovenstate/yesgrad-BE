@@ -1,11 +1,24 @@
 services:
   - type: web
-    name: yes-grad-service-app
-    runtime: java
-    buildCommand: ./gradlew clean bootJar
-    startCommand: java -jar build/libs/app.jar
+    name: yesgrad-service
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: JAVA_VERSION
-        value: 24
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      - key: R2DBC_URL
+        sync: false
+      - key: DATASOURCE_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
