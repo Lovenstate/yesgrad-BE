@@ -6,6 +6,7 @@ import com.yesgrad.service.service.AuthService;
 import com.yesgrad.service.service.TutorProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,10 @@ public class AuthController {
     private final AuthService authService;
     private final TutorProfileService tutorProfileService;
     private static final String AUTH_COOKIE_NAME = "auth_token";
-    private static final int COOKIE_MAX_AGE = 3600; // 1 hour
+    private static final int COOKIE_MAX_AGE = 86400; // 24 hours
+
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
 
     @PostMapping("/register")
     public Mono<ResponseEntity<CommonResponse<User>>> register(
@@ -143,12 +147,13 @@ public class AuthController {
     }
 
     private void setAuthCookie(ServerHttpResponse response, String token) {
+        boolean isSecure = frontendUrl.startsWith("https");
         ResponseCookie cookie = ResponseCookie.from(AUTH_COOKIE_NAME, token)
             .httpOnly(true)
-            .secure(false) // Set to true in production with HTTPS
+            .secure(isSecure)
             .path("/")
             .maxAge(COOKIE_MAX_AGE)
-            .sameSite("Lax") // Use "Strict" for more security, "Lax" for better compatibility
+            .sameSite(isSecure ? "None" : "Lax")
             .build();
         response.addCookie(cookie);
     }
